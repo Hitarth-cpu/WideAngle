@@ -1,9 +1,25 @@
 import { useEffect, useRef, useCallback } from 'react'
+import axios from 'axios'
 import useSessionStore from '../store/sessionStore'
 
 export default function useWebSocket(sessionId) {
   const wsRef = useRef(null)
-  const { setPlanReady, updateAgent, appendAgentToken, setReport, setSessionError } = useSessionStore()
+  const { setPlanReady, addAgent, updateAgent, appendAgentToken, setReport, setSessionError } = useSessionStore()
+
+  // Fetch session status on connect to recover if session already finished
+  const recoverState = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      const { data: session } = await axios.get(`/api/sessions/${sessionId}`)
+      if (session.status === 'done' && session.final_report) {
+        setReport(session.final_report)
+      } else if (session.status === 'failed') {
+        setSessionError('Session failed on the server.')
+      }
+    } catch (e) {
+      console.error('State recovery failed', e)
+    }
+  }, [sessionId, setReport, setSessionError])
 
   const connect = useCallback(() => {
     if (!sessionId) return
@@ -11,6 +27,11 @@ export default function useWebSocket(sessionId) {
     const url = `${protocol}://${window.location.host}/ws/sessions/${sessionId}`
     const ws = new WebSocket(url)
     wsRef.current = ws
+
+    ws.onopen = () => {
+      // On connect, fetch current state in case we missed events
+      recoverState()
+    }
 
     ws.onmessage = (event) => {
       try {
@@ -30,7 +51,7 @@ export default function useWebSocket(sessionId) {
         setTimeout(connect, 2000)
       }
     }
-  }, [sessionId])
+  }, [sessionId, recoverState])
 
   function handleEvent(type, data) {
     switch (type) {
@@ -38,7 +59,8 @@ export default function useWebSocket(sessionId) {
         setPlanReady(data.agents, data.dag)
         break
       case 'agent_start':
-        updateAgent(data.agent_id, { status: 'thinking', name: data.name })
+        addAgent({ id: data.agent_id, name: data.name, stage: data.stage, status: 'thinking', output: '', dependencies: [] })
+        updateAgent(data.agent_id, { status: 'thinking' })
         break
       case 'agent_status':
         updateAgent(data.agent_id, { status: data.status })

@@ -33,7 +33,7 @@ class OllamaClient:
             ],
             "stream": False,
         }
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=600.0) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}{OLLAMA_CHAT_ENDPOINT}",
@@ -74,7 +74,7 @@ class OllamaClient:
         }
 
         full_response = []
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=600.0) as client:
             try:
                 async with client.stream(
                     "POST",

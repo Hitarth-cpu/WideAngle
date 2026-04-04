@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.core.database import get_db, AsyncSessionLocal
 from backend.models.session import Session, SessionStatus
+from backend.models.agent_record import AgentRecord
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
@@ -61,6 +62,27 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
              "created_at": s.created_at.isoformat()} for s in sessions]
 
 
+@router.get("/{session_id}/agents")
+async def get_session_agents(session_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(AgentRecord).where(AgentRecord.session_id == session_id).order_by(AgentRecord.stage)
+    )
+    agents = result.scalars().all()
+    return [
+        {
+            "id": a.id,
+            "name": a.name,
+            "persona": a.persona,
+            "role": a.role,
+            "stage": a.stage,
+            "status": a.status,
+            "output": a.output,
+            "dependencies": [],
+        }
+        for a in agents
+    ]
+
+
 @router.delete("/{session_id}", status_code=204)
 async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Session).where(Session.id == session_id))
@@ -99,7 +121,7 @@ async def _run_session_background(session_id: str):
             session.final_report = report
             await db.commit()
         except Exception as e:
-            logger.error(f"Session {session_id} failed: {e}")
+            logger.error(f"Session {session_id} failed:", exc_info=True)
             session.status = "failed"
             await db.commit()
             await ws_manager.send_to_session(session_id, {"type": "session_error", "data": {"error": str(e)}})
