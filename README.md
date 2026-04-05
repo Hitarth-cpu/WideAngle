@@ -24,11 +24,11 @@ You submit a prompt (startup idea or code). WideAngle:
 ┌─────────────────────────────────────────────────────────────┐
 │                        Browser (React)                      │
 │                                                             │
-│  InputZone ──► SessionPage ──► SpaceCanvas (SVG)           │
-│                    │               ├── Ambient starfield     │
-│                    │               ├── Agent stars           │
-│                    │               └── Constellation lines   │
-│                    │                                         │
+│  InputZone ──► SessionPage ──► SpaceCanvas (SVG)            │ 
+│                    │               ├── Ambient starfield    │
+│                    │               ├── Agent stars          │
+│                    │               └── Constellation lines  │
+│                    │                                        │
 │                    ├──► AgentPanel (reasoning + chat)       │
 │                    └──► SupernovaModal (final report)       │
 │                                                             │
