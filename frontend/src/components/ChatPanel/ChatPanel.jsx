@@ -32,25 +32,35 @@ export default function ChatPanel() {
           transition={{ type: 'spring', stiffness: 120, damping: 20 }}
           style={{
             position: 'fixed', right: 0, top: 0, bottom: 0, width: 360,
-            background: 'rgba(4,8,18,0.92)', backdropFilter: 'blur(20px)',
-            borderLeft: '1px solid rgba(74,111,165,0.3)',
+            background: 'rgba(5,4,10,0.95)', backdropFilter: 'blur(20px)',
+            borderLeft: '1px solid rgba(255,200,80,0.15)',
             display: 'flex', flexDirection: 'column', zIndex: 30,
           }}
         >
           {/* Header */}
           <div style={{
-            padding: '16px 20px', borderBottom: '1px solid rgba(74,111,165,0.2)',
+            padding: '16px 20px', borderBottom: '1px solid rgba(255,200,80,0.1)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontWeight: 700, color: '#e8f0fe' }}>{activeChat}</div>
-              <div style={{ fontSize: 11, color: '#4a6fa5' }}>Ask anything about this analysis</div>
+              <div style={{ fontWeight: 700, color: '#f0ddb8', fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>{activeChat}</div>
+              <div style={{ fontSize: 11, color: '#6a5030' }}>Ask anything about this analysis</div>
             </div>
             <motion.button
-              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.1, background: 'rgba(255,200,80,0.18)' }}
+              whileTap={{ scale: 0.9 }}
               onClick={closeChat}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4a6fa5', fontSize: 20 }}
-            >×</motion.button>
+              style={{
+                background: 'rgba(255,200,80,0.08)',
+                border: '1px solid rgba(255,200,80,0.25)',
+                borderRadius: 6, cursor: 'pointer',
+                color: '#c8a050', fontSize: 18,
+                width: 32, height: 32,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}
+              aria-label="Close chat"
+            >x</motion.button>
           </div>
 
           {/* Messages */}

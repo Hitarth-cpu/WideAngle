@@ -171,6 +171,7 @@ class PlannerAgent:
         )
 
         raw_response = await self.ollama.complete(system, user_prompt)
+        logger.debug(f"Planner raw response:\n{raw_response[:1000]}")
         agents = self._parse_response(raw_response)
         dag = DAGDefinition(agents=agents, mode=mode)
 
@@ -184,23 +185,63 @@ class PlannerAgent:
     def _parse_response(self, raw: str) -> list[AgentSpec]:
         """
         Parse the LLM's JSON response into a list of AgentSpec objects.
-        Handles common LLM formatting issues (markdown fences, leading text).
+        Handles common LLM formatting issues (markdown fences, leading text,
+        trailing garbage, and multiple JSON arrays in the response).
         """
         # Strip markdown code fences if present
         cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip()
         cleaned = re.sub(r"```\s*$", "", cleaned).strip()
 
-        # Extract JSON array (find first [ ... ] block)
-        match = re.search(r'\[.*\]', cleaned, re.DOTALL)
-        if not match:
+        # Find the start of the first JSON array
+        start = cleaned.find('[')
+        if start == -1:
             raise ValueError(f"Planner response contains no JSON array: {raw[:200]}")
 
+        # Extract the first balanced array (stops at matching ])
+        candidate = self._extract_balanced_array(cleaned, start)
+        if candidate is None:
+            raise ValueError(f"Planner response has no balanced JSON array: {raw[:200]}")
+
+        # Apply common LLM JSON repair and parse
+        repaired = self._repair_json(candidate)
         try:
-            data = json.loads(match.group())
+            data = json.loads(repaired)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Planner response is invalid JSON: {e}") from e
+            raise ValueError(f"Planner response is invalid JSON after repair: {e}\n\nRaw:\n{raw[:500]}") from e
+
+        if not isinstance(data, list):
+            raise ValueError(f"Planner JSON is not an array: {type(data)}")
 
         return [AgentSpec(**item) for item in data]
+
+    @staticmethod
+    def _extract_balanced_array(text: str, start: int) -> str | None:
+        """Extract the substring from 'start' covering the first balanced [ ... ]."""
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == '[':
+                depth += 1
+            elif text[i] == ']':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+        return None
+
+    @staticmethod
+    def _repair_json(s: str) -> str:
+        """Fix the most common JSON generation errors from small LLMs."""
+        # Missing comma between objects: }...{ → },{
+        s = re.sub(r'\}\s*\{', '},{', s)
+        # Missing comma between array items where } is followed by [
+        s = re.sub(r'\]\s*\[', '],[', s)
+        # Trailing comma before closing brace/bracket
+        s = re.sub(r',\s*\}', '}', s)
+        s = re.sub(r',\s*\]', ']', s)
+        # Python booleans / None
+        s = re.sub(r'\bTrue\b', 'true', s)
+        s = re.sub(r'\bFalse\b', 'false', s)
+        s = re.sub(r'\bNone\b', 'null', s)
+        return s
 
     def _repair_dag(self, dag: DAGDefinition, errors: list[str]) -> DAGDefinition:
         """

@@ -22,7 +22,19 @@ const useSessionStore = create((set, get) => ({
 
   setSession: (session) => set({ session, sessionStatus: 'running' }),
 
-  setPlanReady: (agents, dag) => set({ agents, dag }),
+  setPlanReady: (agents, dag) => set((state) => ({
+    agents: agents,
+    dag: dag ?? state.dag,
+  })),
+
+  // Adds agent or merges into existing entry matched by name (handles plan_ready → agent_start ID transition)
+  addAgent: (agent) => set((state) => {
+    const byId = state.agents.find((a) => a.id === agent.id)
+    if (byId) return { agents: state.agents.map((a) => a.id === agent.id ? { ...a, ...agent } : a) }
+    const byName = state.agents.find((a) => a.name === agent.name)
+    if (byName) return { agents: state.agents.map((a) => a.name === agent.name ? { ...a, ...agent } : a) }
+    return { agents: [...state.agents, agent] }
+  }),
 
   updateAgent: (agentId, updates) => set((state) => ({
     agents: state.agents.map((a) =>
@@ -54,9 +66,13 @@ const useSessionStore = create((set, get) => ({
     },
   })),
 
+  supernovaReady: false,
+  setSupernovaReady: (val) => set({ supernovaReady: val ?? true }),
+
   reset: () => set({
     session: null, agents: [], dag: null, report: null,
     sessionStatus: 'idle', activeChat: null, chatHistories: {},
+    supernovaReady: false,
   }),
 }))
 

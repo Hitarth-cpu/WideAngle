@@ -17,11 +17,14 @@ export default function useSession() {
     })
     setSession(created)
 
-    // 2. Trigger run
-    await axios.post(`/api/sessions/${created.session_id}/run`)
-
-    // 3. Navigate to canvas
+    // 2. Navigate first so WebSocket connects before /run starts emitting events
     navigate(`/session/${created.session_id}`)
+
+    // 3. Small delay to allow WS handshake before backend starts emitting
+    await new Promise((r) => setTimeout(r, 400))
+
+    // 4. Trigger run
+    await axios.post(`/api/sessions/${created.session_id}/run`)
     return created.session_id
   }, [mode, setSession, reset, navigate])
 

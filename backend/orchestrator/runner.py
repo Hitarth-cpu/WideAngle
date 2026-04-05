@@ -63,6 +63,26 @@ class SessionRunner:
             "total_agents": len(dag.agents),
         })
 
+        # Emit plan_ready so the frontend can populate the canvas before agents start
+        await self._emit("plan_ready", {
+            "agents": [
+                {
+                    "id": f"{self.session_id}_{spec.name.replace(' ', '_')}",
+                    "name": spec.name,
+                    "persona": spec.persona,
+                    "role": spec.role,
+                    "stage": spec.stage,
+                    "status": "idle",
+                    "output": "",
+                    "dependencies": spec.dependencies,
+                }
+                for spec in dag.agents
+            ],
+            "dag": {
+                "stages": {str(k): [s.name for s in v] for k, v in stages.items()}
+            },
+        })
+
         for stage_num in sorted(stages.keys()):
             agent_specs = stages[stage_num]
 
